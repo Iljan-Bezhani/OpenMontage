@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - kids-3d-english
           - kids-cartoon
           - reviewtap-promo
           - focusflow-pitch
@@ -26,9 +27,9 @@ jobs:
   render:
     name: Render selected MP4
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     env:
-      VIDEO_NAME: ${{ inputs.video || 'kids-cartoon' }}
+      VIDEO_NAME: ${{ inputs.video || 'kids-3d-english' }}
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
@@ -40,6 +41,46 @@ jobs:
 
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Blender for genuine 3D rendering
+        if: env.VIDEO_NAME == 'kids-3d-english'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender espeak-ng fonts-dejavu-core
+          blender --version
+
+      - name: Install local natural-sounding Kokoro English voices
+        if: env.VIDEO_NAME == 'kids-3d-english'
+        run: |
+          python3 -m pip install --user --break-system-packages --index-url https://download.pytorch.org/whl/cpu torch
+          python3 -m pip install --user --break-system-packages "kokoro>=0.9.4" soundfile numpy
+          python3 -c "from kokoro import KPipeline; print('Kokoro ready')"
+
+      - name: Generate English character dialogue, music and subtitles
+        if: env.VIDEO_NAME == 'kids-3d-english'
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+        run: python3 scripts/kids3d_voices.py
+
+      - name: Render 3D animated characters, walking, and pizza storm in Blender
+        if: env.VIDEO_NAME == 'kids-3d-english'
+        run: |
+          mkdir -p video-output kids3d-build/frames
+          blender --background --threads 2 --python scripts/kids3d_blender.py -- kids3d-build/timeline.json
+
+      - name: Combine 3D animation with English dialogue and music
+        if: env.VIDEO_NAME == 'kids-3d-english'
+        run: |
+          set -euo pipefail
+          ffmpeg -hide_banner -loglevel warning -y \
+            -framerate 12 -start_number 1 -i kids3d-build/frames/frame_%04d.png \
+            -i kids3d-build/dialogue.wav -i kids3d-build/music.wav \
+            -filter_complex "[1:a]volume=1.0[v];[2:a]volume=0.20[m];[v][m]amix=inputs=2:duration=longest:normalize=0[a]" \
+            -map 0:v:0 -map "[a]" \
+            -vf "subtitles=kids3d-build/captions.srt:force_style='FontName=DejaVu Sans,FontSize=22,Outline=2,Shadow=0'" \
+            -c:v libx264 -preset veryfast -crf 22 -pix_fmt yuv420p -r 24 \
+            -c:a aac -b:a 160k -movflags +faststart \
+            "video-output/kids-3d-english.mp4"
 
       - name: Install Greek cartoon voices
         if: env.VIDEO_NAME == 'kids-cartoon'
@@ -79,7 +120,7 @@ jobs:
             video-output/kids-cartoon.mp4
 
       - name: Render OpenMontage explainer
-        if: env.VIDEO_NAME != 'kids-cartoon'
+        if: env.VIDEO_NAME != 'kids-cartoon' && env.VIDEO_NAME != 'kids-3d-english' && env.VIDEO_NAME != 'kids-3d-english'
         working-directory: remotion-composer
         run: |
           mkdir -p ../video-output
