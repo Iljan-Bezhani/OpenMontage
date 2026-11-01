@@ -1,0 +1,54 @@
+name: Render OpenMontage MP4
+
+on:
+  workflow_dispatch:
+    inputs:
+      video:
+        description: "Choose the video"
+        required: true
+        type: choice
+        options:
+          - reviewtap-promo
+          - focusflow-pitch
+          - code-to-screen
+          - world-in-numbers
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install Remotion dependencies
+        working-directory: remotion-composer
+        run: npm install --no-audit --no-fund
+      - name: Render MP4 with OpenMontage Remotion composer
+        working-directory: remotion-composer
+        env:
+          VIDEO_NAME: ${{ inputs.video }}
+        run: |
+          mkdir -p ../video-output
+          npx remotion render src/index.tsx Explainer "../video-output/${VIDEO_NAME}.mp4" --props "public/demo-props/${VIDEO_NAME}.json" --codec h264 --log verbose
+      - name: Validate MP4 file
+        env:
+          VIDEO_NAME: ${{ inputs.video }}
+        run: |
+          test -s "video-output/${VIDEO_NAME}.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "video-output/${VIDEO_NAME}.mp4"
+      - name: Upload MP4 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmontage-${{ inputs.video }}-mp4
+          path: video-output/*.mp4
+          if-no-files-found: error
+          retention-days: 7
