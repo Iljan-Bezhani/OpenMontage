@@ -12,6 +12,11 @@ on:
           - focusflow-pitch
           - code-to-screen
           - world-in-numbers
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/render-video.yml"
 
 permissions:
   contents: read
@@ -20,35 +25,52 @@ jobs:
   render:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      VIDEO_NAME: ${{ inputs.video || 'reviewtap-promo' }}
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
+
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Install Remotion dependencies
         working-directory: remotion-composer
         run: npm install --no-audit --no-fund
-      - name: Render MP4 with OpenMontage Remotion composer
+
+      - name: Render silent video with OpenMontage Remotion composer
         working-directory: remotion-composer
-        env:
-          VIDEO_NAME: ${{ inputs.video }}
         run: |
           mkdir -p ../video-output
-          npx remotion render src/index.tsx Explainer "../video-output/${VIDEO_NAME}.mp4" --props "public/demo-props/${VIDEO_NAME}.json" --codec h264 --log verbose
-      - name: Validate MP4 file
-        env:
-          VIDEO_NAME: ${{ inputs.video }}
+          npx remotion render src/index.tsx Explainer "../video-output/${VIDEO_NAME}.mp4" --props "public/demo-props/${VIDEO_NAME}.json" --codec h264
+
+      - name: Compose original electronic background music and add AAC audio
         run: |
+          set -euo pipefail
+          DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "video-output/${VIDEO_NAME}.mp4")
+          python3 scripts/generate_promo_soundtrack.py --duration "$DURATION" --output video-output/music.wav
+          ffmpeg -hide_banner -loglevel warning -y -i "video-output/${VIDEO_NAME}.mp4" -i video-output/music.wav \
+            -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -shortest \
+            -movflags +faststart "video-output/${VIDEO_NAME}-with-audio.mp4"
+          mv "video-output/${VIDEO_NAME}-with-audio.mp4" "video-output/${VIDEO_NAME}.mp4"
+          rm video-output/music.wav
+
+      - name: Validate video and sound streams
+        run: |
+          set -euo pipefail
           test -s "video-output/${VIDEO_NAME}.mp4"
-          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 "video-output/${VIDEO_NAME}.mp4"
-      - name: Upload MP4 artifact
+          test "$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 "video-output/${VIDEO_NAME}.mp4")" = "aac"
+          ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_name,codec_type -of default=noprint_wrappers=1 "video-output/${VIDEO_NAME}.mp4"
+
+      - name: Upload MP4 with music
         uses: actions/upload-artifact@v4
         with:
-          name: openmontage-${{ inputs.video }}-mp4
+          name: openmontage-${{ env.VIDEO_NAME }}-with-music
           path: video-output/*.mp4
           if-no-files-found: error
           retention-days: 7
