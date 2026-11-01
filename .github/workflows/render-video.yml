@@ -58,19 +58,19 @@ jobs:
           python3 -c "from kokoro import KPipeline; print('Kokoro ready')"
 
       - name: Generate English character dialogue, music and subtitles
-        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
+        if: env.VIDEO_NAME == 'kids-3d-english'
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
         run: python3 scripts/kids3d_voices.py
 
       - name: Render 3D animated characters, walking, and pizza storm in Blender
-        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
+        if: env.VIDEO_NAME == 'kids-3d-english'
         run: |
           mkdir -p video-output kids3d-build/frames
           xvfb-run -a -s '-screen 0 1280x720x24' blender --background --threads 2 --python scripts/kids3d_blender.py -- kids3d-build/timeline.json
 
       - name: Combine 3D animation with English dialogue and music
-        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
+        if: env.VIDEO_NAME == 'kids-3d-english'
         run: |
           set -euo pipefail
           ffmpeg -hide_banner -loglevel warning -y \
