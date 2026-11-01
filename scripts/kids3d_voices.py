@@ -78,6 +78,17 @@ def main():
     sf.write(OUT / "music.wav", np.clip(music,-0.95,0.95), RATE)
     meta={"duration":duration,"fps":12,"lines":entries, "storm_at":entries[3]["start"]+1.5}
     (OUT / "timeline.json").write_text(json.dumps(meta,indent=2),encoding="utf8")
+    def srt_time(t):
+        ms = round(t * 1000)
+        hh, ms = divmod(ms, 3600000)
+        mm, ms = divmod(ms, 60000)
+        ss, ms = divmod(ms, 1000)
+        return f"{hh:02}:{mm:02}:{ss:02},{ms:03}"
+    srt = []
+    for k, item in enumerate(entries, 1):
+        actor = "PIP" if item["speaker"] == "pip" else "PUFF"
+        srt.extend([str(k), srt_time(item["start"]) + " --> " + srt_time(item["start"] + item["duration"]), actor + ": " + item["text"], ""])
+    (OUT / "captions.srt").write_text("\\n".join(srt) + "\\n", encoding="utf8")
     print("Total seconds",duration,flush=True)
 
 if __name__=="__main__":
