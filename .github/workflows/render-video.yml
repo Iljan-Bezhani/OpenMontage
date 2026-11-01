@@ -100,14 +100,23 @@ jobs:
         run: |
           set -euo pipefail
           ffmpeg -hide_banner -loglevel warning -y \
-            -framerate 12 -start_number 1 -i abc-build/frames/frame_%04d.png \
+            -framerate 9 -start_number 1 -i abc-build/frames/frame_%04d.png \
             -i abc-build/dialogue.wav -i abc-build/music.wav \
             -filter_complex "[1:a]volume=1.0[v];[2:a]volume=0.19[m];[v][m]amix=inputs=2:duration=longest:normalize=0[a]" \
             -map 0:v:0 -map "[a]" \
-            -vf "subtitles=abc-build/captions.srt:force_style='FontName=DejaVu Sans,FontSize=21,Outline=2,Shadow=0'" \
+            -vf "scale=1280:720:flags=lanczos,subtitles=abc-build/captions.srt:force_style='FontName=DejaVu Sans,FontSize=27,Outline=3,Shadow=0'" \
             -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -r 24 \
             -c:a aac -b:a 160k -movflags +faststart \
             "video-output/abc-wonder-garden.mp4"
+
+      - name: Save completed ABC video immediately before other workflow steps
+        if: env.VIDEO_NAME == 'abc-wonder-garden'
+        uses: actions/upload-artifact@v4
+        with:
+          name: abc-wonder-garden-completed-mp4
+          path: video-output/abc-wonder-garden.mp4
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Install Greek cartoon voices
         if: env.VIDEO_NAME == 'kids-cartoon'
@@ -148,7 +157,7 @@ jobs:
             video-output/kids-cartoon.mp4
 
       - name: Render OpenMontage explainer
-        if: env.VIDEO_NAME != 'kids-cartoon' && env.VIDEO_NAME != 'kids-3d-english'
+        if: env.VIDEO_NAME != 'kids-cartoon' && env.VIDEO_NAME != 'kids-3d-english' && env.VIDEO_NAME != 'abc-wonder-garden'
         working-directory: remotion-composer
         run: |
           mkdir -p ../video-output
@@ -180,6 +189,7 @@ jobs:
           ffmpeg -v error -i "video-output/${VIDEO_NAME}.mp4" -map 0:a:0 -t 1 -f null -
 
       - name: Upload final MP4 artifact
+        if: env.VIDEO_NAME != 'abc-wonder-garden'
         uses: actions/upload-artifact@v4
         with:
           name: openmontage-${{ env.VIDEO_NAME }}-mp4
