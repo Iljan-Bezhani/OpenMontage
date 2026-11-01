@@ -1,0 +1,63 @@
+{
+  "themeConfig": {
+    "primaryColor": "#D4AF37",
+    "accentColor": "#D4AF37",
+    "backgroundColor": "#0A0A0A",
+    "surfaceColor": "#131313",
+    "textColor": "#FFFFFF",
+    "mutedTextColor": "#F3E5BC",
+    "captionHighlightColor": "#D4AF37"
+  },
+  "cuts": [
+    {
+      "id": "hook",
+      "source": "",
+      "type": "hero_title",
+      "in_seconds": 0,
+      "out_seconds": 3,
+      "text": "ΖΗΤΑ ΑΞΙΟΛΟΓΗΣΕΙΣ",
+      "subtitle": "ΧΩΡΙΣ ΠΕΡΙΤΤΑ ΒΗΜΑΤΑ",
+      "accentColor": "#D4AF37"
+    },
+    {
+      "id": "tap",
+      "source": "",
+      "type": "hero_title",
+      "in_seconds": 3,
+      "out_seconds": 6,
+      "text": "ΕΝΑ ΑΓΓΙΓΜΑ",
+      "subtitle": "ΚΑΙ Ο ΠΕΛΑΤΗΣ ΑΝΟΙΓΕΙ ΤΟ GOOGLE"
+    },
+    {
+      "id": "benefit",
+      "source": "",
+      "type": "hero_title",
+      "in_seconds": 6,
+      "out_seconds": 9,
+      "text": "ΠΙΟ ΕΥΚΟΛΑ",
+      "subtitle": "ΠΕΡΙΣΣΟΤΕΡΕΣ ΕΥΚΑΙΡΙΕΣ ΓΙΑ ΑΞΙΟΛΟΓΗΣΕΙΣ"
+    },
+    {
+      "id": "product",
+      "source": "",
+      "type": "hero_title",
+      "in_seconds": 9,
+      "out_seconds": 12,
+      "text": "ReviewTap",
+      "subtitle": "NFC ΚΑΡΤΑ GOOGLE REVIEWS"
+    },
+    {
+      "id": "price",
+      "source": "",
+      "type": "stat_card",
+      "in_seconds": 12,
+      "out_seconds": 16,
+      "stat": "20€",
+      "subtitle": "ΠΑΡΑΓΓΕΙΛΕ ΤΗ ΔΙΚΗ ΣΟΥ",
+      "accentColor": "#D4AF37"
+    }
+  ],
+  "overlays": [],
+  "captions": [],
+  "audio": {}
+}
