@@ -46,7 +46,7 @@ jobs:
         if: env.VIDEO_NAME == 'kids-3d-english'
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender espeak-ng fonts-dejavu-core
+          sudo apt-get install -y blender espeak-ng fonts-dejavu-core libegl1 libgl1-mesa-dri libglx-mesa0 libopengl0 xvfb
           blender --version
 
       - name: Install local natural-sounding Kokoro English voices
@@ -66,7 +66,7 @@ jobs:
         if: env.VIDEO_NAME == 'kids-3d-english'
         run: |
           mkdir -p video-output kids3d-build/frames
-          blender --background --threads 2 --python scripts/kids3d_blender.py -- kids3d-build/timeline.json
+          xvfb-run -a -s '-screen 0 1280x720x24' blender --background --threads 2 --python scripts/kids3d_blender.py -- kids3d-build/timeline.json
 
       - name: Combine 3D animation with English dialogue and music
         if: env.VIDEO_NAME == 'kids-3d-english'
@@ -89,6 +89,7 @@ jobs:
           espeak-ng --voices=el
 
       - name: Install OpenMontage Remotion dependencies
+        if: env.VIDEO_NAME != 'kids-3d-english'
         working-directory: remotion-composer
         run: npm install --no-audit --no-fund
 
