@@ -88,7 +88,7 @@ def main():
     for k, item in enumerate(entries, 1):
         actor = "PIP" if item["speaker"] == "pip" else "PUFF"
         srt.extend([str(k), srt_time(item["start"]) + " --> " + srt_time(item["start"] + item["duration"]), actor + ": " + item["text"], ""])
-    (OUT / "captions.srt").write_text("\\n".join(srt) + "\\n", encoding="utf8")
+    (OUT / "captions.srt").write_text("\n".join(srt) + "\n", encoding="utf8")
     print("Total seconds",duration,flush=True)
 
 if __name__=="__main__":
