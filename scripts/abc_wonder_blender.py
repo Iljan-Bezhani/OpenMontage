@@ -14,7 +14,7 @@ from mathutils import Vector
 TIMELINE = Path("abc-build/timeline.json")
 data=json.loads(TIMELINE.read_text(encoding="utf-8"))
 LINES=data["lines"]
-FPS=12
+FPS=9
 DURATION=float(data["duration"])
 FRAME_END=math.ceil(DURATION*FPS)
 frame=lambda seconds:max(1,min(FRAME_END,round(seconds*FPS)+1))
@@ -325,8 +325,8 @@ scene.display.shading.curvature_ridge_factor=1.3
 scene.display.shading.curvature_valley_factor=.8
 scene.display.shading.background_type="WORLD"
 scene.world.color=(.62,.86,.98)
-scene.render.resolution_x=960
-scene.render.resolution_y=540
+scene.render.resolution_x=800
+scene.render.resolution_y=450
 scene.render.resolution_percentage=100
 scene.render.film_transparent=False
 scene.render.image_settings.file_format="PNG"
