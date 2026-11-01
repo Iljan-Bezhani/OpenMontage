@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - abc-wonder-garden
           - kids-3d-english
           - kids-cartoon
           - reviewtap-promo
@@ -29,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
-      VIDEO_NAME: ${{ inputs.video || 'kids-3d-english' }}
+      VIDEO_NAME: ${{ inputs.video || 'abc-wonder-garden' }}
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
@@ -43,33 +44,33 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install Blender for genuine 3D rendering
-        if: env.VIDEO_NAME == 'kids-3d-english'
+        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
         run: |
           sudo apt-get update
           sudo apt-get install -y blender espeak-ng fonts-dejavu-core libegl1 libgl1-mesa-dri libglx-mesa0 libopengl0 xvfb
           blender --version
 
       - name: Install local natural-sounding Kokoro English voices
-        if: env.VIDEO_NAME == 'kids-3d-english'
+        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
         run: |
           python3 -m pip install --user --break-system-packages --index-url https://download.pytorch.org/whl/cpu torch
           python3 -m pip install --user --break-system-packages "kokoro>=0.9.4" soundfile numpy
           python3 -c "from kokoro import KPipeline; print('Kokoro ready')"
 
       - name: Generate English character dialogue, music and subtitles
-        if: env.VIDEO_NAME == 'kids-3d-english'
+        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
         env:
           HF_HUB_DISABLE_TELEMETRY: '1'
         run: python3 scripts/kids3d_voices.py
 
       - name: Render 3D animated characters, walking, and pizza storm in Blender
-        if: env.VIDEO_NAME == 'kids-3d-english'
+        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
         run: |
           mkdir -p video-output kids3d-build/frames
           xvfb-run -a -s '-screen 0 1280x720x24' blender --background --threads 2 --python scripts/kids3d_blender.py -- kids3d-build/timeline.json
 
       - name: Combine 3D animation with English dialogue and music
-        if: env.VIDEO_NAME == 'kids-3d-english'
+        if: env.VIDEO_NAME == 'kids-3d-english' || env.VIDEO_NAME == 'abc-wonder-garden'
         run: |
           set -euo pipefail
           ffmpeg -hide_banner -loglevel warning -y \
@@ -82,6 +83,32 @@ jobs:
             -c:a aac -b:a 160k -movflags +faststart \
             "video-output/kids-3d-english.mp4"
 
+      - name: Generate ABC Wonder Garden English spoken characters and music
+        if: env.VIDEO_NAME == 'abc-wonder-garden'
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+        run: python3 scripts/abc_wonder_voices.py
+
+      - name: Render ABC Wonder Garden 3D characters and alphabet toys
+        if: env.VIDEO_NAME == 'abc-wonder-garden'
+        run: |
+          mkdir -p video-output abc-build/frames
+          xvfb-run -a -s '-screen 0 1280x720x24' blender --background --threads 2 --python scripts/abc_wonder_blender.py
+
+      - name: Mix ABC narration and original music with captions
+        if: env.VIDEO_NAME == 'abc-wonder-garden'
+        run: |
+          set -euo pipefail
+          ffmpeg -hide_banner -loglevel warning -y \
+            -framerate 12 -start_number 1 -i abc-build/frames/frame_%04d.png \
+            -i abc-build/dialogue.wav -i abc-build/music.wav \
+            -filter_complex "[1:a]volume=1.0[v];[2:a]volume=0.19[m];[v][m]amix=inputs=2:duration=longest:normalize=0[a]" \
+            -map 0:v:0 -map "[a]" \
+            -vf "subtitles=abc-build/captions.srt:force_style='FontName=DejaVu Sans,FontSize=21,Outline=2,Shadow=0'" \
+            -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -r 24 \
+            -c:a aac -b:a 160k -movflags +faststart \
+            "video-output/abc-wonder-garden.mp4"
+
       - name: Install Greek cartoon voices
         if: env.VIDEO_NAME == 'kids-cartoon'
         run: |
@@ -89,7 +116,7 @@ jobs:
           espeak-ng --voices=el
 
       - name: Install OpenMontage Remotion dependencies
-        if: env.VIDEO_NAME != 'kids-3d-english'
+        if: env.VIDEO_NAME != 'kids-3d-english' && env.VIDEO_NAME != 'abc-wonder-garden'
         working-directory: remotion-composer
         run: npm install --no-audit --no-fund
 
@@ -121,7 +148,7 @@ jobs:
             video-output/kids-cartoon.mp4
 
       - name: Render OpenMontage explainer
-        if: env.VIDEO_NAME != 'kids-cartoon' && env.VIDEO_NAME != 'kids-3d-english' && env.VIDEO_NAME != 'kids-3d-english'
+        if: env.VIDEO_NAME != 'kids-cartoon' && env.VIDEO_NAME != 'kids-3d-english'
         working-directory: remotion-composer
         run: |
           mkdir -p ../video-output
@@ -131,7 +158,7 @@ jobs:
             --codec h264
 
       - name: Add original soundtrack to explainer
-        if: env.VIDEO_NAME != 'kids-cartoon'
+        if: env.VIDEO_NAME != 'kids-cartoon' && env.VIDEO_NAME != 'kids-3d-english' && env.VIDEO_NAME != 'abc-wonder-garden'
         run: |
           set -euo pipefail
           DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "video-output/${VIDEO_NAME}.mp4")
