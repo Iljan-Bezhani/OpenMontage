@@ -1,0 +1,76 @@
+name: Kids Cartoon - Greek Talking Characters
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/kids-cartoon.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  kids-cartoon:
+    name: Generate kids animation and spoken dialogue
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout OpenMontage fork
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Greek voice and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg fonts-dejavu-core
+          espeak-ng --voices=el
+
+      - name: Install Remotion engine
+        working-directory: remotion-composer
+        run: npm install --no-audit --no-fund
+
+      - name: Generate original Greek character dialogue and music
+        run: python3 scripts/generate_kids_story.py
+
+      - name: Render animated talking characters
+        working-directory: remotion-composer
+        run: |
+          mkdir -p ../video-output
+          npx remotion render src/kids/index.tsx KidsGarden \
+            ../video-output/kids-cartoon-silent.mp4 \
+            --props public/kids-story/timeline.json \
+            --codec h264 --concurrency 2
+
+      - name: Mix character voices with quiet playful music
+        run: |
+          set -euo pipefail
+          ffmpeg -hide_banner -loglevel error -y \
+            -i video-output/kids-cartoon-silent.mp4 \
+            -i remotion-composer/public/kids-story/dialogue.wav \
+            -i remotion-composer/public/kids-story/music.wav \
+            -filter_complex "[1:a]volume=1.0[v];[2:a]volume=0.17[m];[v][m]amix=inputs=2:duration=longest:normalize=0[a]" \
+            -map 0:v:0 -map "[a]" \
+            -c:v copy -c:a aac -b:a 192k -movflags +faststart \
+            -shortest video-output/mina-kai-loulis-greek.mp4
+
+      - name: Verify final MP4 includes picture and spoken audio
+        run: |
+          set -euo pipefail
+          test -s video-output/mina-kai-loulis-greek.mp4
+          test "$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of csv=p=0 video-output/mina-kai-loulis-greek.mp4)" = "h264"
+          test "$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 video-output/mina-kai-loulis-greek.mp4)" = "aac"
+          ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_name,codec_type -of default=noprint_wrappers=1 video-output/mina-kai-loulis-greek.mp4
+
+      - name: Upload cartoon MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: mina-kai-loulis-greek-talking-cartoon
+          path: video-output/mina-kai-loulis-greek.mp4
+          if-no-files-found: error
+          retention-days: 7
